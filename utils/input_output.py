@@ -1,5 +1,6 @@
 import os
 from PIL import Image
+from tkinter import filedialog
 
 def load_icon_images(directory_path, size=(260,100)):
     images = []
@@ -17,3 +18,12 @@ def load_icon_images(directory_path, size=(260,100)):
                 print("[ERROR] File not exist")
 
     return images
+
+def save_image(image):
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".png",
+        filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("All files", "*.*")]
+    )
+    if file_path:
+        img = Image.fromarray(image)
+        img.save(file_path)
