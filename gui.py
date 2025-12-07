@@ -1,11 +1,9 @@
 import customtkinter as ctk
 from utils.input_output import load_icon_images, save_image, save_video
-from tkinter import filedialog
-from PIL import Image, ImageTk
+from utils.live_feed import LiveFeed
+from PIL import Image
 import cv2
 import time
-import threading
-
 
 class AppWindow:
     def __init__(self, root):
@@ -16,20 +14,14 @@ class AppWindow:
         ctk.set_appearance_mode("dark")  # Options: "light", "dark", "system"
         ctk.set_default_color_theme("blue")  # Themes: "blue", "green", "dark-blue"
 
-        # Related to the live feed
-        self.is_paused = False
         # Captured image
         self.captured_image = None
 
         # Video capturing related
         self.captured_video = None
-        self.is_recording = False
-        self.record_start_time = None
-        self.recorded_frames = []
-        self.timer_label = None
-        self.video_writer = None
         self.actual_fps = 30
-        self.after_id = None
+        self.timer_label = None
+        self.record_start_time = None
 
         # Main grid layout
         self.root.grid_rowconfigure(0, weight=1)
@@ -46,7 +38,12 @@ class AppWindow:
 
         self.cap = cv2.VideoCapture(0)
 
-        self.update_video()
+        self.live_feed = LiveFeed(
+            root=self.root,
+            cap=self.cap,
+            video_label=self.video_label,
+            get_frame_size_callback=lambda: (self.left_frame.winfo_width(), self.left_frame.winfo_height())
+        )
 
         # Sidebar (filters)
         self.sidebar = ctk.CTkScrollableFrame(
@@ -56,7 +53,6 @@ class AppWindow:
             corner_radius=15
         )
         self.sidebar.grid(row=0, column=1, sticky="nswe", padx=(5, 5), pady=(5, 5))
-        #self.sidebar.grid_propagate(False)
 
         self.pattern_buttons = []
         self.selected_button = None
@@ -88,31 +84,6 @@ class AppWindow:
         self.record_video_btn.pack(side="left", padx=20, pady=20)
 
         self.action_buttons = []
-
-    def update_video(self):
-        if not self.is_paused:
-            ret, frame = self.cap.read()
-            if ret:
-                frame = cv2.flip(frame, 1)
-
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(frame)
-
-                img = img.resize((self.left_frame.winfo_width(), self.left_frame.winfo_height()))
-
-                imgtk = ctk.CTkImage(light_image=img, dark_image=img,
-                                     size=(self.left_frame.winfo_width(), self.left_frame.winfo_height()))
-
-                self.video_label.configure(image=imgtk)
-                self.video_label.imgtk = imgtk
-
-                if self.is_recording:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    self.recorded_frames.append(frame)
-
-            if self.after_id:
-                self.root.after_cancel(self.after_id)
-            self.after_id = self.video_label.after(30, self.update_video)
 
     # Sidebar buttons
     def add_sidebar_buttons(self):
@@ -186,7 +157,7 @@ class AppWindow:
         self.captured_image = rgb_frame
         img = Image.fromarray(rgb_frame)
 
-        self.is_paused = True
+        self.live_feed.pause()
         self.display_image(img)
 
         self.take_photo_btn.configure(state="disabled")
@@ -201,10 +172,9 @@ class AppWindow:
         self.video_label.imgtk = imgtk
 
     def start_recording(self):
-        self.is_paused = False
-        self.is_recording = True
-        self.recorded_frames = []
-        self.record_start_time = time.time()
+        self.live_feed.resume()
+        self.live_feed.start_recording()  # start recording properly
+        self.record_start_time = time.time()  # start timer
 
         if self.timer_label:
             self.timer_label.destroy()
@@ -216,7 +186,6 @@ class AppWindow:
             text_color="white",
             font=ctk.CTkFont(size=24, weight="bold"),
         )
-
         self.timer_label.place(relx=0.5, rely=0.05, anchor="center")
 
         self.take_photo_btn.configure(state="disabled")
@@ -226,7 +195,7 @@ class AppWindow:
         self.update_timer()
 
     def update_timer(self):
-        if self.is_recording and self.record_start_time:
+        if self.live_feed.is_lf_recording() and self.record_start_time:
             elapsed = int(time.time() - self.record_start_time)
             minutes = elapsed // 60
             seconds = elapsed % 60
@@ -261,40 +230,41 @@ class AppWindow:
 
 
     def stop_recording(self):
-        if not self.is_recording:
+        if not self.live_feed.is_lf_recording():
             return
 
         self.show_action_buttons(photo_mode=False)
 
-        self.is_recording = False
-        self.is_paused = True
+        self.live_feed.pause()
+        recorded_frames = self.live_feed.stop_recording()
         elapsed_time = time.time() - self.record_start_time
-        frame_count = len(self.recorded_frames)
+        frame_count = len(recorded_frames)
         self.actual_fps = frame_count / elapsed_time if elapsed_time > 0 else 30
 
-        if self.recorded_frames:
-            self.captured_video = self.recorded_frames.copy()
-            last_frame = self.recorded_frames[-1]
-            last_frame_rgb = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(last_frame_rgb)
+        if recorded_frames:
+            self.captured_video = recorded_frames.copy()
+            last_frame = recorded_frames[-1]
+            img = Image.fromarray(last_frame)
             self.display_image(img)
 
     def discard(self):
-        if self.after_id:
-            self.root.after_cancel(self.after_id)
-            self.after_id = None
         for btn in getattr(self, "action_buttons", []):
             btn.destroy()
+        self.action_buttons.clear()
+
         if self.timer_label:
             self.timer_label.destroy()
             self.timer_label = None
-        self.action_buttons.clear()
-        self.is_paused = False
+
         self.captured_image = None
+
         self.take_photo_btn.configure(state="normal")
         self.record_video_btn.configure(state="normal")
 
-        self.update_video()
+        self.live_feed.resume()
+
+        if not self.live_feed.after_id:
+            self.live_feed.update_video()
 
     def save(self, photo_mode):
         if photo_mode and self.captured_image is not None:
@@ -308,4 +278,5 @@ class AppWindow:
         if hasattr(self, "cap") and self.cap.isOpened():
             self.cap.release()
         self.root.destroy()
+
 

@@ -1,0 +1,60 @@
+import cv2
+import customtkinter as ctk
+from PIL import Image
+
+class LiveFeed:
+    def __init__(self, root, cap, video_label, get_frame_size_callback):
+        self.root = root
+        self.cap = cap
+        self.video_label = video_label
+        self.get_frame_size_callback = get_frame_size_callback
+
+        self.is_paused = False
+        self.is_recording = False
+        self.recorded_frames = []
+        self.after_id = None
+
+        self.update_video()
+
+    def start_recording(self):
+        self.is_recording = True
+        self.recorded_frames = []
+
+    def stop_recording(self):
+        self.is_recording = False
+        return self.recorded_frames.copy()
+
+    def pause(self):
+        self.is_paused = True
+
+    def resume(self):
+        self.is_paused = False
+
+    def get_frame_size(self):
+        return self.get_frame_size_callback()
+
+    def is_lf_recording(self):
+        return self.is_recording
+
+    def update_video(self):
+        if not self.is_paused:
+            ret, frame = self.cap.read()
+            if ret:
+                frame = cv2.flip(frame, 1)
+
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(rgb_frame)
+
+                w, h = self.get_frame_size()
+                img = img.resize((w, h))
+
+                imgtk = ctk.CTkImage(light_image=img, dark_image=img, size=(w, h))
+                self.video_label.configure(image=imgtk)
+                self.video_label.imgtk = imgtk
+
+                if self.is_recording:
+                    self.recorded_frames.append(rgb_frame)
+
+        if self.after_id:
+            self.video_label.after_cancel(self.after_id)
+        self.after_id = self.video_label.after(30, self.update_video)
