@@ -4,6 +4,7 @@ from utils.live_feed import LiveFeed
 from PIL import Image
 import cv2
 import time
+import numpy as np
 
 class AppWindow:
     def __init__(self, root):
@@ -90,6 +91,7 @@ class AppWindow:
         label = ctk.CTkLabel(self.sidebar, text="PATTERNS", font=ctk.CTkFont(size=20, weight="bold"))
         label.pack(pady=(20, 10))
 
+        self.add_pattern_button("DISCARD")
         self.add_pattern_button("BLUR")
         for name, pil_img in self.icon_images:
             self.add_pattern_button(name, pil_img)
@@ -133,11 +135,13 @@ class AppWindow:
                 command=lambda b=name: self.select_button(b)
             )
 
+
         button.pack(pady=10)
         button._name = name  # assign the identifier
         self.pattern_buttons.append(button)
 
     def select_button(self, name):
+        # For UI Highlight
         for btn in self.pattern_buttons:
             btn.configure(border_width=0, border_color=btn.cget("fg_color"))
 
@@ -147,15 +151,29 @@ class AppWindow:
                 self.selected_button = name
                 break
 
-    def take_photo(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            return
+        #For Applying Effect To The Live Feed
+        if name == "DISCARD":
+            self.live_feed.set_effect_mode("none")
+            self.live_feed.set_selected_pattern(None)
+        elif name == "BLUR":
+            self.live_feed.set_effect_mode("blur")
+            self.live_feed.set_selected_pattern(None)
+        else:
+            self.live_feed.set_effect_mode("pattern")
 
-        frame = cv2.flip(frame, 1)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.captured_image = rgb_frame
-        img = Image.fromarray(rgb_frame)
+            for pat_name, pil_img in self.icon_images:
+                if pat_name == name:
+                    self.live_feed.set_selected_pattern(np.array(pil_img))
+                    break
+
+    def take_photo(self):
+        # get last processed frame from LiveFeed
+        processed = self.live_feed.last_processed_frame
+        if processed is None:
+            return  # camera not initialized yet
+
+        self.captured_image = processed.copy()
+        img = Image.fromarray(processed)
 
         self.live_feed.pause()
         self.display_image(img)
