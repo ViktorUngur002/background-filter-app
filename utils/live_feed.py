@@ -2,7 +2,7 @@ import cv2
 import customtkinter as ctk
 from PIL import Image
 from processing.segmenter import PersonSegmenter
-from processing.backgound_apply import apply_blur_background, apply_pattern_background
+from processing.background_apply import apply_blur_background, apply_pattern_background
 
 class LiveFeed:
     def __init__(self, root, cap, video_label, get_frame_size_callback):
