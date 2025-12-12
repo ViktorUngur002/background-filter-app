@@ -3,6 +3,7 @@ import customtkinter as ctk
 from PIL import Image
 from processing.segmenter import PersonSegmenter
 from processing.background_apply import apply_blur_background, apply_pattern_background
+from processing.effects import apply_glitch, apply_pixelation
 
 class LiveFeed:
     def __init__(self, root, cap, video_label, get_frame_size_callback):
@@ -63,9 +64,18 @@ class LiveFeed:
                 mask = self.segmenter.get_mask(rgb_frame)
 
                 if self.effect_mode == "blur":
-                    processed_frame = apply_blur_background(rgb_frame, mask)
+                    motion_score = self.segmenter.get_motion_score()
+                    processed_frame = apply_blur_background(rgb_frame, mask, motion_score)
+
                 elif self.effect_mode == "pattern" and self.selected_pattern is not None:
                     processed_frame = apply_pattern_background(rgb_frame, mask, self.selected_pattern)
+
+                    # NEW MODES
+                elif self.effect_mode == "glitch":
+                    processed_frame = apply_glitch(rgb_frame, mask)
+                elif self.effect_mode == "pixelate":
+                    processed_frame = apply_pixelation(rgb_frame, mask)
+
                 else:
                     processed_frame = rgb_frame
 

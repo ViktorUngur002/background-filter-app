@@ -93,6 +93,8 @@ class AppWindow:
 
         self.add_pattern_button("DISCARD")
         self.add_pattern_button("BLUR")
+        self.add_pattern_button("GLITCH")
+        self.add_pattern_button("PIXELATE")
         for name, pil_img in self.icon_images:
             self.add_pattern_button(name, pil_img)
 
@@ -158,6 +160,10 @@ class AppWindow:
         elif name == "BLUR":
             self.live_feed.set_effect_mode("blur")
             self.live_feed.set_selected_pattern(None)
+        elif name == "GLITCH":
+            self.live_feed.set_effect_mode("glitch")
+        elif name == "PIXELATE":
+            self.live_feed.set_effect_mode("pixelate")
         else:
             self.live_feed.set_effect_mode("pattern")
 
