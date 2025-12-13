@@ -3,6 +3,7 @@ import customtkinter as ctk
 from PIL import Image
 from processing.segmenter import PersonSegmenter
 from processing.background_apply import apply_blur_background, apply_pattern_background
+from processing.cameraman import SmartCameraman
 from processing.effects import apply_glitch, apply_pixelation
 
 class LiveFeed:
@@ -19,6 +20,7 @@ class LiveFeed:
         self.last_processed_frame = None
 
         self.segmenter = PersonSegmenter()
+        self.cameraman = SmartCameraman()
         self.selected_pattern = None
         self.effect_mode = "none"
 
@@ -79,6 +81,7 @@ class LiveFeed:
                 else:
                     processed_frame = rgb_frame
 
+                processed_frame = self.cameraman.process(processed_frame, mask)
                 self.last_processed_frame = processed_frame.copy()
 
                 img = Image.fromarray(processed_frame)
