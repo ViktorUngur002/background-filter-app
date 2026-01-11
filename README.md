@@ -1,1 +1,1 @@
-## BackGround Subtraction App
+## Background Subtraction App

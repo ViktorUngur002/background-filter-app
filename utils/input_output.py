@@ -41,7 +41,6 @@ def save_video(video, fps = 30):
         out = cv2.VideoWriter(file_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
         for frame in video:
-            # Convert RGB -> BGR before writing
             bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             out.write(bgr_frame)
 

@@ -55,6 +55,7 @@ class LiveFeed:
     def is_lf_recording(self):
         return self.is_recording
 
+    # Main method for live feed working
     def update_video(self):
         if not self.is_paused:
             ret, frame = self.cap.read()
@@ -68,16 +69,12 @@ class LiveFeed:
                 if self.effect_mode == "blur":
                     motion_score = self.segmenter.get_motion_score()
                     processed_frame = apply_blur_background(rgb_frame, mask, motion_score)
-
                 elif self.effect_mode == "pattern" and self.selected_pattern is not None:
                     processed_frame = apply_pattern_background(rgb_frame, mask, self.selected_pattern)
-
-                    # NEW MODES
                 elif self.effect_mode == "glitch":
                     processed_frame = apply_glitch(rgb_frame, mask)
                 elif self.effect_mode == "pixelate":
                     processed_frame = apply_pixelation(rgb_frame, mask)
-
                 else:
                     processed_frame = rgb_frame
 

@@ -12,14 +12,15 @@ class AppWindow:
         self.root.title("Background Removal App")
         self.root.geometry("1500x700")
         self.root.configure(bg="#222222")
-        ctk.set_appearance_mode("dark")  # Options: "light", "dark", "system"
-        ctk.set_default_color_theme("blue")  # Themes: "blue", "green", "dark-blue"
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
 
         # Captured image
         self.captured_image = None
 
         # Video capturing related
         self.captured_video = None
+
         self.actual_fps = 30
         self.timer_label = None
         self.record_start_time = None
@@ -112,7 +113,7 @@ class AppWindow:
 
             button = ctk.CTkButton(
                 self.sidebar,
-                text=" ",  # tiny text so border renders
+                text=" ",
                 image=photo,
                 width=button_width,
                 height=button_height,
@@ -120,8 +121,8 @@ class AppWindow:
                 fg_color="#222",
                 hover_color="#333",
                 border_width=0,
-                border_color="#222",  # initial color same as background
-                command=lambda b=name: self.select_button(b),
+                border_color="#222",
+                command=lambda b=name: self.apply_effect_button(b),
             )
         else:
             button = ctk.CTkButton(
@@ -134,16 +135,16 @@ class AppWindow:
                 hover_color="#333",
                 border_width=0,
                 border_color="#222",
-                command=lambda b=name: self.select_button(b)
+                command=lambda b=name: self.apply_effect_button(b)
             )
 
 
         button.pack(pady=10)
-        button._name = name  # assign the identifier
+        button._name = name
         self.pattern_buttons.append(button)
 
-    def select_button(self, name):
-        # For UI Highlight
+    # The effect of selection for sidebar buttons and applying the effects
+    def apply_effect_button(self, name):
         for btn in self.pattern_buttons:
             btn.configure(border_width=0, border_color=btn.cget("fg_color"))
 
@@ -172,11 +173,12 @@ class AppWindow:
                     self.live_feed.set_selected_pattern(np.array(pil_img))
                     break
 
+    # Action for taking a photo
     def take_photo(self):
-        # get last processed frame from LiveFeed
+        # Get last processed frame from LiveFeed
         processed = self.live_feed.last_processed_frame
         if processed is None:
-            return  # camera not initialized yet
+            return
 
         self.captured_image = processed.copy()
         img = Image.fromarray(processed)
@@ -192,13 +194,13 @@ class AppWindow:
         img = img.resize((self.left_frame.winfo_width(), self.left_frame.winfo_height()))
         imgtk = ctk.CTkImage(light_image=img, dark_image=img,
                              size=(self.left_frame.winfo_width(), self.left_frame.winfo_height()))
-        self.video_label.configure(image=imgtk)
         self.video_label.imgtk = imgtk
 
+    # Action for recording
     def start_recording(self):
         self.live_feed.resume()
-        self.live_feed.start_recording()  # start recording properly
-        self.record_start_time = time.time()  # start timer
+        self.live_feed.start_recording()
+        self.record_start_time = time.time()
 
         if self.timer_label:
             self.timer_label.destroy()
@@ -226,6 +228,7 @@ class AppWindow:
             self.timer_label.configure(text=f"{minutes:02}:{seconds:02}")
             self.root.after(1000, self.update_timer)
 
+    # Adding the stop recording button
     def add_action_stop_recording(self):
         stop_recording_btn = (ctk.CTkButton(
             self.bottom_bar, text="STOP RECORDING", fg_color="#b33", hover_color="#d55", **self.action_btn_style,
@@ -235,6 +238,7 @@ class AppWindow:
 
         self.action_buttons.append(stop_recording_btn)
 
+    # Adding the additional save and discard buttons
     def show_action_buttons(self, photo_mode):
         save_text = "SAVE VIDEO"
         if photo_mode:
@@ -252,7 +256,7 @@ class AppWindow:
 
         self.action_buttons.extend([save_btn, discard_btn])
 
-
+    # Action for stop recording
     def stop_recording(self):
         if not self.live_feed.is_lf_recording():
             return
@@ -281,6 +285,7 @@ class AppWindow:
             self.timer_label = None
 
         self.captured_image = None
+        self.captured_video = None
 
         self.take_photo_btn.configure(state="normal")
         self.record_video_btn.configure(state="normal")
@@ -302,5 +307,3 @@ class AppWindow:
         if hasattr(self, "cap") and self.cap.isOpened():
             self.cap.release()
         self.root.destroy()
-
-
